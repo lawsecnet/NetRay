@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter.scrolledtext import ScrolledText
 from ipwhois import IPWhois
 import re
 import pprint as pp
@@ -22,8 +21,8 @@ lbl_domainInput = tk.Label(master=frm_basic, text="Domain/IP/Certificate (SHA256
 lbl_passiveTotalApi = tk.Label(master=frm_basic, text="Passive Total api key:")
 lbl_passiveTotalEmail = tk.Label(master=frm_basic, text="Passive Total email:")
 lbl_shodanApi = tk.Label(master=frm_basic, text="Shodan API key:")
-lbl_censysAPIID = tk.Label(master=frm_basic, text="Censys API ID")
-lbl_censysAPIS = tk.Label(master=frm_basic, text="Censys API Secret")
+lbl_censysAPIID = tk.Label(master=frm_basic, text="Censys API ID:")
+lbl_censysAPIS = tk.Label(master=frm_basic, text="Censys API Secret:")
 ent_domainInput = tk.Entry(master=frm_basic,width=100)
 ent_passiveTotalEmail = tk.Entry(master=frm_basic, width=100)
 ent_passiveTotalApi = tk.Entry(master=frm_basic, width=100)
@@ -35,6 +34,7 @@ dsp_result = tk.Text(textContainer, width=120, height=50, wrap="none", borderwid
 textVsb = tk.Scrollbar(textContainer, orient="vertical", command=dsp_result.yview)
 textHsb = tk.Scrollbar(textContainer, orient="horizontal", command=dsp_result.xview)
 dsp_result.configure(yscrollcommand=textVsb.set, xscrollcommand=textHsb.set)
+
 
 
 def scan_whois():
@@ -97,7 +97,7 @@ def shodan_lookup():
     dsp_result.configure(state="disabled")
     dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
 
-def censys_cert_search():
+def censys_cert_lookup():
     apiid = str(ent_censysAPIID.get())
     apis = str(ent_censysAPIS.get())
     cert = str(ent_domainInput.get())
@@ -115,6 +115,30 @@ def censys_cert_search():
     dsp_result.configure(state="disabled")
     dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
     
+
+def censys_cert_search():
+    apiid = str(ent_censysAPIID.get())
+    apis = str(ent_censysAPIS.get())
+    cert = str(ent_domainInput.get())
+
+    os.environ["CENSYS_API_ID"] = apiid
+    os.environ["CENSYS_API_SECRET"] = apis
+    cen = CensysCerts()
+    
+    query = cen.search(
+    cert,
+    sort=["parsed.issuer.organization", "parsed.subject.postal_code"],
+    pages=2
+    )
+
+    cen_hits = query()
+    results_p = json.dumps(cen_hits, indent=2)
+
+    dsp_result.configure(state="normal")
+    dsp_result.delete("1.0", tk.END)
+    dsp_result.insert("1.0", results_p)
+    dsp_result.configure(state="disabled")
+    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
 
 btn_whoisButton = tk.Button(
     frm_buttons,
@@ -138,6 +162,14 @@ btn_passiveTotalLookup = tk.Button(
     command=passivetotal_lookup)
 
 btn_censysLookup = tk.Button(
+     frm_buttons,
+     text="Censys Cert Lookup",
+     width=20,
+     height=2,
+     command=censys_cert_lookup
+)
+
+btn_censysSearch = tk.Button(
      frm_buttons,
      text="Censys Cert Search",
      width=20,
@@ -163,6 +195,7 @@ btn_whoisButton.grid(row=0, column=2)
 btn_shodanButton.grid(row=1, column=2)
 btn_passiveTotalLookup.grid(row=2, column=2)
 btn_censysLookup.grid(row=3, column=2)
+btn_censysSearch.grid(row=4, column=2)
 dsp_result.grid(row=6, column=0, sticky="nsew")
 textVsb.grid(row=6, column=1, sticky="ns")
 textHsb.grid(row=7, column=0, sticky="ew")

@@ -1,0 +1,267 @@
+import tkinter as tk
+from ipwhois import IPWhois
+import re
+import pprint as pp
+import socket
+import requests
+import os
+import json
+from shodan import Shodan
+from censys.search import CensysCerts
+
+mainWindow = tk.Tk()
+mainWindow.title("NetRay")
+mainWindow.resizable(width=False, height=False)
+
+frm_basic = tk.Frame(master=mainWindow)
+frm_buttons = tk.Frame(mainWindow)
+
+lbl_domainInput = tk.Label(master=frm_basic, text="Domain/IP/Certificate (SHA256): ")
+lbl_passiveTotalApi = tk.Label(master=frm_basic, text="Passive Total api key:")
+lbl_passiveTotalEmail = tk.Label(master=frm_basic, text="Passive Total email:")
+lbl_shodanApi = tk.Label(master=frm_basic, text="Shodan API key:")
+lbl_censysAPIID = tk.Label(master=frm_basic, text="Censys API ID:")
+lbl_censysAPIS = tk.Label(master=frm_basic, text="Censys API Secret:")
+
+ent_domainInput = tk.Entry(master=frm_basic,width=100)
+ent_passiveTotalEmail = tk.Entry(master=frm_basic, width=100)
+ent_passiveTotalApi = tk.Entry(master=frm_basic, width=100)
+ent_shodanApi = tk.Entry(master=frm_basic, width=100)
+ent_censysAPIID = tk.Entry(master=frm_basic, width=100)
+ent_censysAPIS = tk.Entry(master=frm_basic, width=100)
+
+textContainer1 = tk.Frame(mainWindow, borderwidth=0, relief="sunken")
+dsp_result1 = tk.Text(textContainer1, width=140, height=25, wrap="none", borderwidth=0)
+textVsb1 = tk.Scrollbar(textContainer1, orient="vertical", command=dsp_result1.yview)
+textHsb1 = tk.Scrollbar(textContainer1, orient="horizontal", command=dsp_result1.xview)
+dsp_result1.configure(yscrollcommand=textVsb1.set, xscrollcommand=textHsb1.set)
+
+textContainer2 = tk.Frame(mainWindow, borderwidth=0, relief="sunken")
+dsp_result2 = tk.Text(textContainer2, width=140, height=25, wrap="none", borderwidth=0)
+textVsb2 = tk.Scrollbar(textContainer2, orient="vertical", command=dsp_result2.yview)
+textHsb2 = tk.Scrollbar(textContainer2, orient="horizontal", command=dsp_result2.xview)
+dsp_result2.configure(yscrollcommand=textVsb2.set, xscrollcommand=textHsb2.set)
+switch = tk.IntVar()
+switch_button = tk.Checkbutton(master=frm_basic, text="Check for left display", variable=switch)
+label1 = tk.Label(textContainer1, text="Display 1")
+label2 = tk.Label(textContainer2, text="Display 2")
+dsp_switch = False
+
+def print_results(presults):
+    global dsp_switch
+    dsp_result = dsp_result1 if dsp_switch else dsp_result2
+
+    dsp_result.configure(state="normal")
+    dsp_result.delete("1.0", tk.END)
+    for line in presults.split("\n"):
+        # IP addresses (IPv4) and domain names have different regular expression
+        ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
+        domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+
+        if ip_match or domain_match:
+            # use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match:
+                dsp_result.insert(tk.INSERT, '\t')
+                dsp_result.insert(tk.INSERT, match, ('highlight', match))
+                dsp_result.insert(tk.INSERT, '\n') # new line
+        else:
+            dsp_result.insert(tk.END, line + '\n')
+
+    dsp_result.configure(state="disabled")
+
+    # switch the display for the next function call
+    dsp_switch = not dsp_switch
+
+def add_clickable_results(results, dsp_result):
+    dsp_result.configure(state="normal")
+    dsp_result.delete("1.0", tk.END)
+    for line in results.split("\n"):
+        # Regular expressions for IP addresses (IPv4), domain names and SHA256 hashes
+        ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
+        domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+        sha256_match = re.findall(r"\b[a-fA-F\d]{64}\b", line)
+
+        if ip_match or domain_match or sha256_match:
+            # Use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match + sha256_match:
+                dsp_result.insert(tk.INSERT, '\t')
+                dsp_result.insert(tk.INSERT, match, ('highlight', match))
+                dsp_result.insert(tk.INSERT, '\n')  # new line
+        else:
+            dsp_result.insert(tk.END, line + '\n')  # if no match just insert the line
+
+    dsp_result.configure(state="disabled")
+
+def scan_whois():
+    target_domain = str(ent_domainInput.get())
+    if re.search(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", target_domain) is not None:
+        target = IPWhois(target_domain)
+        whoisResults = target.lookup_whois()
+    elif re.search(r"(?!-)[a-z0-9-]{1,63}(?<!-)$", target_domain) is not None:
+        target = socket.gethostbyname(target_domain)
+        target = IPWhois(target)
+        whoisResults = target.lookup_whois()
+    else:
+        whoisResults = str("Not IP or Domain")
+    presults = pp.pformat(whoisResults, indent=2)
+    add_clickable_results(presults, dsp_result1 if switch.get() else dsp_result2)
+
+
+def passivetotal_lookup():
+    username = ent_passiveTotalEmail.get()
+    key = ent_passiveTotalApi.get()
+    auth = (username, key)
+    base_url = "https://api.passivetotal.org"
+
+    def passivetotal_get(path, query):
+        url = base_url + path
+        data = {'query': query}
+
+        response = requests.get(url, auth=auth, json=data)
+        return response.json()
+
+    pdns_results = passivetotal_get('/v2/dns/passive', str(ent_domainInput.get()))
+    pdns_formated = pp.pformat(pdns_results)
+
+    add_clickable_results(pdns_formated, dsp_result1 if switch.get() else dsp_result2)
+
+def shodan_lookup():
+    key = ent_shodanApi.get()
+    shodan_api = Shodan(key)    
+    target_domain = str(ent_domainInput.get())
+    target = socket.gethostbyname(target_domain)
+
+    shodan_info = shodan_api.host(target)
+    shodan_results = pp.pformat(shodan_info)
+
+    add_clickable_results(shodan_results, dsp_result1 if switch.get() else dsp_result2)
+
+def censys_cert_lookup():
+    apiid = str(ent_censysAPIID.get())
+    apis = str(ent_censysAPIS.get())
+    cert = str(ent_domainInput.get())
+
+    os.environ["CENSYS_API_ID"] = apiid
+    os.environ["CENSYS_API_SECRET"] = apis
+    cen = CensysCerts()
+    
+    censys_results = cen.view(cert)
+    results_p = json.dumps(censys_results, indent=2)
+
+    add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
+    
+
+def censys_cert_search():
+    apiid = str(ent_censysAPIID.get())
+    apis = str(ent_censysAPIS.get())
+    cert = str(ent_domainInput.get())
+
+    os.environ["CENSYS_API_ID"] = apiid
+    os.environ["CENSYS_API_SECRET"] = apis
+    cen = CensysCerts()
+    
+    query = cen.search(
+    cert,
+    sort=["parsed.issuer.organization", "parsed.subject.postal_code"],
+    pages=2
+    )
+
+    cen_hits = query()
+    results_p = json.dumps(cen_hits, indent=2)
+
+    add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
+
+def on_click(event):
+    # get the tag of clicked word
+    tag = event.widget.tag_names(tk.CURRENT)[1]
+    ent_domainInput.delete(0, tk.END)
+    ent_domainInput.insert(0, tag)
+
+def btn_whois_click():
+    scan_whois()
+
+def btn_pdns_click():
+    passivetotal_lookup()
+
+def btn_shodan_click():
+    shodan_lookup()
+
+def btn_censys_cert_lookup_click():
+    censys_cert_lookup()
+
+def btn_censys_cert_search_click():
+    censys_cert_search()
+
+# Buttons
+btn_whois = tk.Button(master=frm_buttons, text="WHOIS Lookup", command=btn_whois_click)
+btn_pdns = tk.Button(master=frm_buttons, text="Passive Total PDNS", command=btn_pdns_click)
+btn_shodan = tk.Button(master=frm_buttons, text="Shodan Lookup", command=btn_shodan_click)
+btn_censys_cert_lookup = tk.Button(master=frm_buttons, text="Censys Cert Lookup", command=btn_censys_cert_lookup_click)
+btn_censys_cert_search = tk.Button(master=frm_buttons, text="Censys Cert Search", command=btn_censys_cert_search_click)
+
+
+# Layout
+lbl_domainInput.grid(row=0, column=0, sticky='e')
+lbl_passiveTotalApi.grid(row=1, column=0, sticky='e')
+lbl_passiveTotalEmail.grid(row=2, column=0, sticky='e')
+lbl_shodanApi.grid(row=3, column=0, sticky='e')
+lbl_censysAPIID.grid(row=4, column=0, sticky='e')
+lbl_censysAPIS.grid(row=5, column=0, sticky='e')
+ent_domainInput.grid(row=0, column=1, sticky='w')
+ent_passiveTotalApi.grid(row=1, column=1, sticky='w')
+ent_passiveTotalEmail.grid(row=2, column=1, sticky='w')
+ent_shodanApi.grid(row=3, column=1, sticky='w')
+ent_censysAPIID.grid(row=4, column=1, sticky='w')
+ent_censysAPIS.grid(row=5, column=1, sticky='w')
+
+frm_basic.grid(row=0, column=0, columnspan=2, sticky='nw')
+frm_buttons.grid(row=2, column=0, columnspan=2, sticky='nw')
+
+
+btn_whois.grid(row=0, column=0, padx=2, pady=5)
+btn_pdns.grid(row=0, column=1, padx=2, pady=5)
+btn_shodan.grid(row=0, column=2, padx=2, pady=5)
+btn_censys_cert_lookup.grid(row=0, column=3, padx=2, pady=5)
+btn_censys_cert_search.grid(row=0, column=4, padx=2, pady=5)
+switch_button.grid(row=0, column=5, columnspan=2)
+
+textContainer1 = tk.Frame(mainWindow)
+dsp_result1 = tk.Text(textContainer1, width=60, height=50, wrap="none", borderwidth=0)
+textVsb1 = tk.Scrollbar(textContainer1, orient="vertical", command=dsp_result1.yview)
+textHsb1 = tk.Scrollbar(textContainer1, orient="horizontal", command=dsp_result1.xview)
+dsp_result1.configure(yscrollcommand=textVsb1.set, xscrollcommand=textHsb1.set)
+dsp_result1.grid(row=0, column=0, sticky='nsew')
+textVsb1.grid(row=0, column=1, sticky='ns')
+textHsb1.grid(row=1, column=0, sticky='ew')
+textContainer1.grid_columnconfigure(0, weight=1)
+textContainer1.grid_rowconfigure(0, weight=1)
+
+textContainer2 = tk.Frame(mainWindow)
+dsp_result2 = tk.Text(textContainer2, width=60, height=50, wrap="none", borderwidth=0)
+textVsb2 = tk.Scrollbar(textContainer2, orient="vertical", command=dsp_result2.yview)
+textHsb2 = tk.Scrollbar(textContainer2, orient="horizontal", command=dsp_result2.xview)
+dsp_result2.configure(yscrollcommand=textVsb2.set, xscrollcommand=textHsb2.set)
+dsp_result2.grid(row=0, column=0, sticky='nsew')
+textVsb2.grid(row=0, column=1, sticky='ns')
+textHsb2.grid(row=1, column=0, sticky='ew')
+textContainer2.grid_columnconfigure(0, weight=1)
+textContainer2.grid_rowconfigure(0, weight=1)
+
+# Now grid both frames within the mainWindow
+frm_basic.grid(row=0, column=0, columnspan=2, pady=10, padx=10)
+frm_buttons.grid(row=2, column=0, columnspan=2, pady=10)
+textContainer1.grid(row=3, column=0, padx=10)
+textContainer2.grid(row=3, column=1, padx=10)
+
+# Configure mainWindow's grid
+mainWindow.grid_columnconfigure(0, weight=1)
+mainWindow.grid_columnconfigure(1, weight=1)
+mainWindow.grid_rowconfigure(3, weight=1)
+
+dsp_result1.tag_configure('highlight', foreground='blue', underline=1)
+dsp_result1.tag_bind('highlight', '<Button-1>', on_click)
+
+dsp_result2.tag_configure('highlight', foreground='blue', underline=1)
+dsp_result2.tag_bind('highlight', '<Button-1>', on_click)
+
+mainWindow.mainloop()

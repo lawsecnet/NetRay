@@ -18,7 +18,7 @@ mainWindow.resizable(width=False, height=False)
 frm_basic = tk.Frame(master=mainWindow)
 frm_buttons = tk.Frame(mainWindow)
 
-lbl_domainInput = tk.Label(master=frm_basic, text="Domain/IP/Certificate: ")
+lbl_domainInput = tk.Label(master=frm_basic, text="Domain/IP/Certificate (SHA256): ")
 lbl_passiveTotalApi = tk.Label(master=frm_basic, text="Passive Total api key:")
 lbl_passiveTotalEmail = tk.Label(master=frm_basic, text="Passive Total email:")
 lbl_shodanApi = tk.Label(master=frm_basic, text="Shodan API key:")
@@ -30,7 +30,11 @@ ent_passiveTotalApi = tk.Entry(master=frm_basic, width=100)
 ent_shodanApi = tk.Entry(master=frm_basic, width=100)
 ent_censysAPIID = tk.Entry(master=frm_basic, width=100)
 ent_censysAPIS = tk.Entry(master=frm_basic, width=100)
-lbl_result = ScrolledText(master=mainWindow, width=117)
+textContainer = tk.Frame(mainWindow, borderwidth=1, relief="sunken")
+dsp_result = tk.Text(textContainer, width=120, height=50, wrap="none", borderwidth=0)
+textVsb = tk.Scrollbar(textContainer, orient="vertical", command=dsp_result.yview)
+textHsb = tk.Scrollbar(textContainer, orient="horizontal", command=dsp_result.xview)
+dsp_result.configure(yscrollcommand=textVsb.set, xscrollcommand=textHsb.set)
 
 
 def scan_whois():
@@ -50,11 +54,11 @@ def scan_whois():
 
     presults = pp.pformat(whoisResults, indent=2)
 
-    lbl_result.configure(state="normal")
-    lbl_result.delete("1.0", tk.END)
-    lbl_result.insert("1.0", presults)
-    lbl_result.configure(state="disabled")
-    lbl_result.bind("<Button>", lambda event: lbl_result.focus_set())
+    dsp_result.configure(state="normal")
+    dsp_result.delete("1.0", tk.END)
+    dsp_result.insert("1.0", presults)
+    dsp_result.configure(state="disabled")
+    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
 
 def passivetotal_lookup():
     username = ent_passiveTotalEmail.get()
@@ -72,11 +76,11 @@ def passivetotal_lookup():
     pdns_results = passivetotal_get('/v2/dns/passive', str(ent_domainInput.get()))
     pdns_formated = pp.pformat(pdns_results)
 
-    lbl_result.configure(state="normal")
-    lbl_result.delete("1.0", tk.END)
-    lbl_result.insert("1.0", pdns_formated)
-    lbl_result.configure(state="disabled")
-    lbl_result.bind("<Button>", lambda event: lbl_result.focus_set())
+    dsp_result.configure(state="normal")
+    dsp_result.delete("1.0", tk.END)
+    dsp_result.insert("1.0", pdns_formated)
+    dsp_result.configure(state="disabled")
+    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
 
 def shodan_lookup():
     key = ent_shodanApi.get()
@@ -87,11 +91,11 @@ def shodan_lookup():
     shodan_info = shodan_api.host(target)
     shodan_results = pp.pformat(shodan_info)
 
-    lbl_result.configure(state="normal")
-    lbl_result.delete("1.0", tk.END)
-    lbl_result.insert("1.0", shodan_results)
-    lbl_result.configure(state="disabled")
-    lbl_result.bind("<Button>", lambda event: lbl_result.focus_set())
+    dsp_result.configure(state="normal")
+    dsp_result.delete("1.0", tk.END)
+    dsp_result.insert("1.0", shodan_results)
+    dsp_result.configure(state="disabled")
+    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
 
 def censys_cert_search():
     apiid = str(ent_censysAPIID.get())
@@ -105,11 +109,11 @@ def censys_cert_search():
     censys_results = cen.view(cert)
     results_p = json.dumps(censys_results, indent=2)
 
-    lbl_result.configure(state="normal")
-    lbl_result.delete("1.0", tk.END)
-    lbl_result.insert("1.0", results_p)
-    lbl_result.configure(state="disabled")
-    lbl_result.bind("<Button>", lambda event: lbl_result.focus_set())
+    dsp_result.configure(state="normal")
+    dsp_result.delete("1.0", tk.END)
+    dsp_result.insert("1.0", results_p)
+    dsp_result.configure(state="disabled")
+    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
     
 
 btn_whoisButton = tk.Button(
@@ -159,6 +163,12 @@ btn_whoisButton.grid(row=0, column=2)
 btn_shodanButton.grid(row=1, column=2)
 btn_passiveTotalLookup.grid(row=2, column=2)
 btn_censysLookup.grid(row=3, column=2)
-lbl_result.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+dsp_result.grid(row=6, column=0, sticky="nsew")
+textVsb.grid(row=6, column=1, sticky="ns")
+textHsb.grid(row=7, column=0, sticky="ew")
+textContainer.grid(row=6, column=0, columnspan=2, sticky="nsew")
+textContainer.grid_rowconfigure(0, weight=1)
+textContainer.grid_columnconfigure(0, weight=1)
+
 
 mainWindow.mainloop()

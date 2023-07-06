@@ -35,7 +35,10 @@ textVsb = tk.Scrollbar(textContainer, orient="vertical", command=dsp_result.yvie
 textHsb = tk.Scrollbar(textContainer, orient="horizontal", command=dsp_result.xview)
 dsp_result.configure(yscrollcommand=textVsb.set, xscrollcommand=textHsb.set)
 
-
+def on_click(event):
+    tag = dsp_result.tag_names(tk.CURRENT)[1]  # get the tag of clicked word
+    ent_domainInput.delete(0, tk.END)
+    ent_domainInput.insert(0, tag)
 
 def scan_whois():
     target_domain = str(ent_domainInput.get())
@@ -56,9 +59,21 @@ def scan_whois():
 
     dsp_result.configure(state="normal")
     dsp_result.delete("1.0", tk.END)
-    dsp_result.insert("1.0", presults)
+    for line in presults.split("\n"):
+        # IP addresses (IPv4) and domain names have different regular expression
+        ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
+        domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+
+        if ip_match or domain_match:
+            # use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match:
+                dsp_result.insert(tk.INSERT, '\t')
+                dsp_result.insert(tk.INSERT, match, ('highlight', match))
+                dsp_result.insert(tk.INSERT, '\n') # new line
+        else:
+            dsp_result.insert(tk.END, line + '\n') # if no match just insert the line
+
     dsp_result.configure(state="disabled")
-    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
 
 def passivetotal_lookup():
     username = ent_passiveTotalEmail.get()
@@ -78,9 +93,21 @@ def passivetotal_lookup():
 
     dsp_result.configure(state="normal")
     dsp_result.delete("1.0", tk.END)
-    dsp_result.insert("1.0", pdns_formated)
+    for line in pdns_formated.split("\n"):
+        # IP addresses (IPv4) and domain names have different regular expression
+        ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
+        domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+
+        if ip_match or domain_match:
+            # use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match:
+                dsp_result.insert(tk.INSERT, '\t')
+                dsp_result.insert(tk.INSERT, match, ('highlight', match))
+                dsp_result.insert(tk.INSERT, '\n') # new line
+        else:
+            dsp_result.insert(tk.END, line + '\n') # if no match just insert the line
+
     dsp_result.configure(state="disabled")
-    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
 
 def shodan_lookup():
     key = ent_shodanApi.get()
@@ -93,10 +120,22 @@ def shodan_lookup():
 
     dsp_result.configure(state="normal")
     dsp_result.delete("1.0", tk.END)
-    dsp_result.insert("1.0", shodan_results)
-    dsp_result.configure(state="disabled")
-    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
+    for line in shodan_results.split("\n"):
+        # IP addresses (IPv4) and domain names have different regular expression
+        ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
+        domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
 
+        if ip_match or domain_match:
+            # use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match:
+                for match in ip_match + domain_match:
+                    dsp_result.insert(tk.INSERT, '\t')
+                    dsp_result.insert(tk.INSERT, match, ('highlight', match))
+                    dsp_result.insert(tk.INSERT, '\n') # new line
+        else:
+            dsp_result.insert(tk.END, line + '\n') # if no match just insert the line
+
+    dsp_result.configure(state="disabled")
 def censys_cert_lookup():
     apiid = str(ent_censysAPIID.get())
     apis = str(ent_censysAPIS.get())
@@ -111,9 +150,20 @@ def censys_cert_lookup():
 
     dsp_result.configure(state="normal")
     dsp_result.delete("1.0", tk.END)
-    dsp_result.insert("1.0", results_p)
-    dsp_result.configure(state="disabled")
-    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
+    for line in results_p.split("\n"):
+        # IP addresses (IPv4) and domain names have different regular expression
+        ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
+        domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+
+        if ip_match or domain_match:
+            # use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match:
+                for match in ip_match + domain_match:
+                    dsp_result.insert(tk.INSERT, '\t')
+                    dsp_result.insert(tk.INSERT, match, ('highlight', match))
+                    dsp_result.insert(tk.INSERT, '\n') # new line
+        else:
+            dsp_result.insert(tk.END, line + '\n')
     
 
 def censys_cert_search():
@@ -136,9 +186,20 @@ def censys_cert_search():
 
     dsp_result.configure(state="normal")
     dsp_result.delete("1.0", tk.END)
-    dsp_result.insert("1.0", results_p)
-    dsp_result.configure(state="disabled")
-    dsp_result.bind("<Button>", lambda event: dsp_result.focus_set())
+    for line in results_p.split("\n"):
+        # IP addresses (IPv4) and domain names have different regular expression
+        ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
+        domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+
+        if ip_match or domain_match:
+            # use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match:
+                for match in ip_match + domain_match:
+                    dsp_result.insert(tk.INSERT, '\t')
+                    dsp_result.insert(tk.INSERT, match, ('highlight', match))
+                    dsp_result.insert(tk.INSERT, '\n') # new line
+        else:
+            dsp_result.insert(tk.END, line + '\n')
 
 btn_whoisButton = tk.Button(
     frm_buttons,
@@ -202,6 +263,7 @@ textHsb.grid(row=7, column=0, sticky="ew")
 textContainer.grid(row=6, column=0, columnspan=2, sticky="nsew")
 textContainer.grid_rowconfigure(0, weight=1)
 textContainer.grid_columnconfigure(0, weight=1)
-
+dsp_result.tag_configure('highlight', foreground='blue', underline=True)
+dsp_result.tag_bind('highlight', '<Button-1>', on_click) # bind left mouse click event to on_click callback
 
 mainWindow.mainloop()

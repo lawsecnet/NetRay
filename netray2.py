@@ -103,7 +103,7 @@ def add_clickable_results(results, dsp_result):
 def scan_whois():
     try:
         target_domain = str(ent_domainInput.get())
-        if re.search(r"^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", target_domain) is not None:
+        if re.search(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", target_domain) is not None:
             target = IPWhois(target_domain)
             whoisResults = target.lookup_whois()
         elif re.search(r"(?!-)[a-z0-9-]{1,63}(?<!-)$", target_domain) is not None:

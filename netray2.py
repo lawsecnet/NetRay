@@ -17,8 +17,8 @@ frm_basic = tk.Frame(master=mainWindow)
 frm_buttons = tk.Frame(mainWindow)
 
 lbl_domainInput = tk.Label(master=frm_basic, text="Domain/IP/Certificate (SHA256): ")
-lbl_passiveTotalApi = tk.Label(master=frm_basic, text="Passive Total api key:")
-lbl_passiveTotalEmail = tk.Label(master=frm_basic, text="Passive Total email:")
+lbl_passiveTotalApi = tk.Label(master=frm_basic, text="Passive Total APY Key:")
+lbl_passiveTotalEmail = tk.Label(master=frm_basic, text="Passive Total Email:")
 lbl_shodanApi = tk.Label(master=frm_basic, text="Shodan API key:")
 lbl_censysAPIID = tk.Label(master=frm_basic, text="Censys API ID:")
 lbl_censysAPIS = tk.Label(master=frm_basic, text="Censys API Secret:")
@@ -42,10 +42,18 @@ textVsb2 = tk.Scrollbar(textContainer2, orient="vertical", command=dsp_result2.y
 textHsb2 = tk.Scrollbar(textContainer2, orient="horizontal", command=dsp_result2.xview)
 dsp_result2.configure(yscrollcommand=textVsb2.set, xscrollcommand=textHsb2.set)
 switch = tk.IntVar()
-switch_button = tk.Checkbutton(master=frm_basic, text="Check for left display", variable=switch)
+switch_button = tk.Checkbutton(master=frm_buttons, text="Check for left display", variable=switch)
 label1 = tk.Label(textContainer1, text="Display 1")
 label2 = tk.Label(textContainer2, text="Display 2")
 dsp_switch = False
+
+recordContainer = tk.Frame(master=frm_basic)
+dsp_records = tk.Text(recordContainer, width=35, height=8, borderwidth=2, state='disabled')
+recordVsb = tk.Scrollbar(recordContainer, orient="vertical", command=dsp_records.yview)
+dsp_records.configure(yscrollcommand=recordVsb.set)
+dsp_records.grid(row=0, column=0)
+recordVsb.grid(row=0, column=1, sticky='ns')
+
 
 def print_results(presults):
     global dsp_switch
@@ -93,18 +101,22 @@ def add_clickable_results(results, dsp_result):
     dsp_result.configure(state="disabled")
 
 def scan_whois():
-    target_domain = str(ent_domainInput.get())
-    if re.search(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", target_domain) is not None:
-        target = IPWhois(target_domain)
-        whoisResults = target.lookup_whois()
-    elif re.search(r"(?!-)[a-z0-9-]{1,63}(?<!-)$", target_domain) is not None:
-        target = socket.gethostbyname(target_domain)
-        target = IPWhois(target)
-        whoisResults = target.lookup_whois()
-    else:
-        whoisResults = str("Not IP or Domain")
-    presults = pp.pformat(whoisResults, indent=2)
-    add_clickable_results(presults, dsp_result1 if switch.get() else dsp_result2)
+    try:
+        target_domain = str(ent_domainInput.get())
+        if re.search(r"^((?!-))(xn--)?[a-z0-9][a-z0-9-_]{0,61}[a-z0-9]{0,1}\.(xn--)?([a-z0-9\-]{1,61}|[a-z0-9-]{1,30}\.[a-z]{2,})$", target_domain) is not None:
+            target = IPWhois(target_domain)
+            whoisResults = target.lookup_whois()
+        elif re.search(r"(?!-)[a-z0-9-]{1,63}(?<!-)$", target_domain) is not None:
+            target = socket.gethostbyname(target_domain)
+            target = IPWhois(target)
+            whoisResults = target.lookup_whois()
+        else:
+            whoisResults = str("Not IP or Domain")
+        presults = pp.pformat(whoisResults, indent=2)
+        add_clickable_results(presults, dsp_result1 if switch.get() else dsp_result2)
+        update_records(ent_domainInput.get())
+    except socket.gaierror as e:
+        add_clickable_results(str(e), dsp_result1 if switch.get() else dsp_result2)
 
 
 def passivetotal_lookup():
@@ -124,6 +136,7 @@ def passivetotal_lookup():
     pdns_formated = pp.pformat(pdns_results)
 
     add_clickable_results(pdns_formated, dsp_result1 if switch.get() else dsp_result2)
+    update_records(ent_domainInput.get())
 
 def shodan_lookup():
     key = ent_shodanApi.get()
@@ -135,6 +148,22 @@ def shodan_lookup():
     shodan_results = pp.pformat(shodan_info)
 
     add_clickable_results(shodan_results, dsp_result1 if switch.get() else dsp_result2)
+    update_records(ent_domainInput.get())
+
+def shodan_search():
+    try:
+        key = ent_shodanApi.get()
+        shodan_api = Shodan(key)    
+        target = str(ent_domainInput.get())
+
+        shodan_info = shodan_api.search(target)
+        shodan_results = pp.pformat(shodan_info)
+
+        add_clickable_results(shodan_results, dsp_result1 if switch.get() else dsp_result2)
+        update_records(ent_domainInput.get())
+    except Shodan.APIError as e:
+        add_clickable_results(e, dsp_result1 if switch.get() else dsp_result2)
+
 
 def censys_cert_lookup():
     apiid = str(ent_censysAPIID.get())
@@ -149,6 +178,7 @@ def censys_cert_lookup():
     results_p = json.dumps(censys_results, indent=2)
 
     add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
+    update_records(ent_domainInput.get())
     
 
 def censys_cert_search():
@@ -170,12 +200,23 @@ def censys_cert_search():
     results_p = json.dumps(cen_hits, indent=2)
 
     add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
+    update_records(ent_domainInput.get())
 
 def on_click(event):
     # get the tag of clicked word
     tag = event.widget.tag_names(tk.CURRENT)[1]
     ent_domainInput.delete(0, tk.END)
     ent_domainInput.insert(0, tag)
+
+def update_records(entry):
+    dsp_records.configure(state='normal') 
+    dsp_records.insert(tk.END, entry + '\n')  
+    dsp_records.configure(state='disabled')
+
+def clear_click():
+    dsp_records.configure(state='normal')  
+    dsp_records.delete('1.0', tk.END)  
+    dsp_records.configure(state='disabled')
 
 def btn_whois_click():
     scan_whois()
@@ -186,6 +227,9 @@ def btn_pdns_click():
 def btn_shodan_click():
     shodan_lookup()
 
+def btn_shodan_search_click():
+    shodan_search()
+
 def btn_censys_cert_lookup_click():
     censys_cert_lookup()
 
@@ -195,18 +239,19 @@ def btn_censys_cert_search_click():
 # Buttons
 btn_whois = tk.Button(master=frm_buttons, text="WHOIS Lookup", command=btn_whois_click)
 btn_pdns = tk.Button(master=frm_buttons, text="Passive Total PDNS", command=btn_pdns_click)
-btn_shodan = tk.Button(master=frm_buttons, text="Shodan Lookup", command=btn_shodan_click)
+btn_shodan = tk.Button(master=frm_buttons, text="Shodan Host Lookup", command=btn_shodan_click)
+btn_shodan_search = tk.Button(master=frm_buttons, text="Shodan Search", command=btn_shodan_search_click)
 btn_censys_cert_lookup = tk.Button(master=frm_buttons, text="Censys Cert Lookup", command=btn_censys_cert_lookup_click)
 btn_censys_cert_search = tk.Button(master=frm_buttons, text="Censys Cert Search", command=btn_censys_cert_search_click)
-
+btn_clear = tk.Button(master=frm_buttons, text='Clear Records', command=clear_click)
 
 # Layout
-lbl_domainInput.grid(row=0, column=0, sticky='e')
-lbl_passiveTotalApi.grid(row=1, column=0, sticky='e')
-lbl_passiveTotalEmail.grid(row=2, column=0, sticky='e')
-lbl_shodanApi.grid(row=3, column=0, sticky='e')
-lbl_censysAPIID.grid(row=4, column=0, sticky='e')
-lbl_censysAPIS.grid(row=5, column=0, sticky='e')
+lbl_domainInput.grid(row=0, column=0)
+lbl_passiveTotalApi.grid(row=1, column=0, sticky='w')
+lbl_passiveTotalEmail.grid(row=2, column=0, sticky='w')
+lbl_shodanApi.grid(row=3, column=0, sticky='w')
+lbl_censysAPIID.grid(row=4, column=0, sticky='w')
+lbl_censysAPIS.grid(row=5, column=0, sticky='w')
 ent_domainInput.grid(row=0, column=1, sticky='w')
 ent_passiveTotalApi.grid(row=1, column=1, sticky='w')
 ent_passiveTotalEmail.grid(row=2, column=1, sticky='w')
@@ -214,19 +259,17 @@ ent_shodanApi.grid(row=3, column=1, sticky='w')
 ent_censysAPIID.grid(row=4, column=1, sticky='w')
 ent_censysAPIS.grid(row=5, column=1, sticky='w')
 
-frm_basic.grid(row=0, column=0, columnspan=2, sticky='nw')
-frm_buttons.grid(row=2, column=0, columnspan=2, sticky='nw')
-
-
-btn_whois.grid(row=0, column=0, padx=2, pady=5)
-btn_pdns.grid(row=0, column=1, padx=2, pady=5)
-btn_shodan.grid(row=0, column=2, padx=2, pady=5)
-btn_censys_cert_lookup.grid(row=0, column=3, padx=2, pady=5)
-btn_censys_cert_search.grid(row=0, column=4, padx=2, pady=5)
-switch_button.grid(row=0, column=5, columnspan=2)
+btn_whois.grid(row=0, column=0, padx=2)
+btn_pdns.grid(row=0, column=1, padx=2)
+btn_shodan.grid(row=0, column=2, padx=2)
+btn_shodan_search.grid(row=0, column=3, padx=2)
+btn_censys_cert_lookup.grid(row=0, column=4, padx=2)
+btn_censys_cert_search.grid(row=0, column=5, padx=2)
+btn_clear.grid(row=0, column=6, padx=2)
+switch_button.grid(row=0, column=7, padx=2)
 
 textContainer1 = tk.Frame(mainWindow)
-dsp_result1 = tk.Text(textContainer1, width=60, height=50, wrap="none", borderwidth=0)
+dsp_result1 = tk.Text(textContainer1, width=70, height=50, wrap="none", borderwidth=0)
 textVsb1 = tk.Scrollbar(textContainer1, orient="vertical", command=dsp_result1.yview)
 textHsb1 = tk.Scrollbar(textContainer1, orient="horizontal", command=dsp_result1.xview)
 dsp_result1.configure(yscrollcommand=textVsb1.set, xscrollcommand=textHsb1.set)
@@ -237,7 +280,7 @@ textContainer1.grid_columnconfigure(0, weight=1)
 textContainer1.grid_rowconfigure(0, weight=1)
 
 textContainer2 = tk.Frame(mainWindow)
-dsp_result2 = tk.Text(textContainer2, width=60, height=50, wrap="none", borderwidth=0)
+dsp_result2 = tk.Text(textContainer2, width=70, height=50, wrap="none", borderwidth=0)
 textVsb2 = tk.Scrollbar(textContainer2, orient="vertical", command=dsp_result2.yview)
 textHsb2 = tk.Scrollbar(textContainer2, orient="horizontal", command=dsp_result2.xview)
 dsp_result2.configure(yscrollcommand=textVsb2.set, xscrollcommand=textHsb2.set)
@@ -247,16 +290,11 @@ textHsb2.grid(row=1, column=0, sticky='ew')
 textContainer2.grid_columnconfigure(0, weight=1)
 textContainer2.grid_rowconfigure(0, weight=1)
 
-# Now grid both frames within the mainWindow
-frm_basic.grid(row=0, column=0, columnspan=2, pady=10, padx=10)
+frm_basic.grid(row=0, column=0, columnspan=2)
 frm_buttons.grid(row=2, column=0, columnspan=2, pady=10)
-textContainer1.grid(row=3, column=0, padx=10)
-textContainer2.grid(row=3, column=1, padx=10)
-
-# Configure mainWindow's grid
-mainWindow.grid_columnconfigure(0, weight=1)
-mainWindow.grid_columnconfigure(1, weight=1)
-mainWindow.grid_rowconfigure(3, weight=1)
+textContainer1.grid(row=3, column=0, padx=5)
+textContainer2.grid(row=3, column=1, padx=5)
+recordContainer.grid(row=0, column=2, rowspan=6, sticky='e')  
 
 dsp_result1.tag_configure('highlight', foreground='blue', underline=1)
 dsp_result1.tag_bind('highlight', '<Button-1>', on_click)

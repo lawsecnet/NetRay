@@ -8,6 +8,7 @@ import os
 import json
 from shodan import Shodan
 from censys.search import CensysCerts
+from censys.search import CensysHosts
 
 mainWindow = tk.Tk()
 mainWindow.title("NetRay")
@@ -17,7 +18,7 @@ frm_basic = tk.Frame(master=mainWindow)
 frm_buttons = tk.Frame(mainWindow)
 
 lbl_domainInput = tk.Label(master=frm_basic, text="Domain/IP/Certificate (SHA256): ")
-lbl_passiveTotalApi = tk.Label(master=frm_basic, text="Passive Total APY Key:")
+lbl_passiveTotalApi = tk.Label(master=frm_basic, text="Passive Total API Key:")
 lbl_passiveTotalEmail = tk.Label(master=frm_basic, text="Passive Total Email:")
 lbl_shodanApi = tk.Label(master=frm_basic, text="Shodan API key:")
 lbl_censysAPIID = tk.Label(master=frm_basic, text="Censys API ID:")
@@ -48,14 +49,12 @@ label2 = tk.Label(textContainer2, text="Display 2")
 dsp_switch = False
 
 recordContainer = tk.Frame(master=frm_basic)
-dsp_records = tk.Text(recordContainer, width=35, height=8, borderwidth=2, state='disabled')
+dsp_records = tk.Text(recordContainer, width=35, height=12, borderwidth=2, state='disabled')
 recordVsb = tk.Scrollbar(recordContainer, orient="vertical", command=dsp_records.yview)
 dsp_records.configure(yscrollcommand=recordVsb.set)
 dsp_records.grid(row=0, column=0)
 recordVsb.grid(row=0, column=1, sticky='ns')
 
-
-import re
 
 def print_results(presults):
     global dsp_switch
@@ -150,16 +149,19 @@ def passivetotal_lookup():
     update_records(ent_domainInput.get())
 
 def shodan_lookup():
-    key = ent_shodanApi.get()
-    shodan_api = Shodan(key)    
-    target_domain = str(ent_domainInput.get())
-    target = socket.gethostbyname(target_domain)
+    try:
+        key = ent_shodanApi.get()
+        shodan_api = Shodan(key)    
+        target_domain = str(ent_domainInput.get())
+        target = socket.gethostbyname(target_domain)
 
-    shodan_info = shodan_api.host(target)
-    shodan_results = pp.pformat(shodan_info)
+        shodan_info = shodan_api.host(target)
+        shodan_results = pp.pformat(shodan_info)
 
-    add_clickable_results(shodan_results, dsp_result1 if switch.get() else dsp_result2)
-    update_records(ent_domainInput.get())
+        add_clickable_results(shodan_results, dsp_result1 if switch.get() else dsp_result2)
+        update_records(ent_domainInput.get())
+    except Exception as e:
+        add_clickable_results(str(e), dsp_result1 if switch.get() else dsp_result2)
 
 def shodan_search():
     try:
@@ -219,6 +221,25 @@ def censys_cert_search():
     except Exception as e:
         add_clickable_results(str(e), dsp_result1 if switch.get() else dsp_result2)
 
+def censys_host_view():
+    try:
+        apiid = str(ent_censysAPIID.get())
+        apis = str(ent_censysAPIS.get())
+        cert = str(ent_domainInput.get())
+
+        os.environ["CENSYS_API_ID"] = apiid
+        os.environ["CENSYS_API_SECRET"] = apis
+        cen = CensysHosts()
+    
+        host = cen.view(ent_domainInput.get())
+        host_r = json.dumps(host, indent=2)
+
+        add_clickable_results(host_r, dsp_result1 if switch.get() else dsp_result2)
+        update_records(ent_domainInput.get())
+    except Exception as e:
+        add_clickable_results(str(e), dsp_result1 if switch.get() else dsp_result2)
+
+
 def on_click(event):
     # get the tag of clicked word
     tag = event.widget.tag_names(tk.CURRENT)[1]
@@ -253,6 +274,10 @@ def btn_censys_cert_lookup_click():
 def btn_censys_cert_search_click():
     censys_cert_search()
 
+def btn_censys_host_view_click():
+    censys_host_view()
+
+
 # Buttons
 btn_whois = tk.Button(master=frm_buttons, text="WHOIS Lookup", command=btn_whois_click)
 btn_pdns = tk.Button(master=frm_buttons, text="Passive Total PDNS", command=btn_pdns_click)
@@ -260,6 +285,7 @@ btn_shodan = tk.Button(master=frm_buttons, text="Shodan Host Lookup", command=bt
 btn_shodan_search = tk.Button(master=frm_buttons, text="Shodan Search", command=btn_shodan_search_click)
 btn_censys_cert_lookup = tk.Button(master=frm_buttons, text="Censys Cert Lookup", command=btn_censys_cert_lookup_click)
 btn_censys_cert_search = tk.Button(master=frm_buttons, text="Censys Cert Search", command=btn_censys_cert_search_click)
+btn_censys_host_view = tk.Button(master=frm_buttons, text="Censys Host View", command=btn_censys_host_view_click)
 btn_clear = tk.Button(master=frm_buttons, text='Clear Records', command=clear_click)
 
 # Layout
@@ -279,11 +305,12 @@ ent_censysAPIS.grid(row=5, column=1, sticky='w')
 btn_whois.grid(row=0, column=0, padx=2)
 btn_pdns.grid(row=0, column=1, padx=2)
 btn_shodan.grid(row=0, column=2, padx=2)
-btn_shodan_search.grid(row=0, column=3, padx=2)
-btn_censys_cert_lookup.grid(row=0, column=4, padx=2)
-btn_censys_cert_search.grid(row=0, column=5, padx=2)
-btn_clear.grid(row=0, column=6, padx=2)
-switch_button.grid(row=0, column=7, padx=2)
+btn_shodan_search.grid(row=1, column=2, padx=2)
+btn_censys_cert_lookup.grid(row=0, column=3, padx=2)
+btn_censys_cert_search.grid(row=1, column=3, padx=2)
+btn_censys_host_view.grid(row=2, column=3, padx=2)
+btn_clear.grid(row=0, column=4, padx=2)
+switch_button.grid(row=0, column=5, padx=2)
 
 textContainer1 = tk.Frame(mainWindow)
 dsp_result1 = tk.Text(textContainer1, width=70, height=50, wrap="none", borderwidth=0)

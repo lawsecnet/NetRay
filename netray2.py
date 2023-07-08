@@ -55,6 +55,8 @@ dsp_records.grid(row=0, column=0)
 recordVsb.grid(row=0, column=1, sticky='ns')
 
 
+import re
+
 def print_results(presults):
     global dsp_switch
     dsp_result = dsp_result1 if dsp_switch else dsp_result2
@@ -62,16 +64,20 @@ def print_results(presults):
     dsp_result.configure(state="normal")
     dsp_result.delete("1.0", tk.END)
     for line in presults.split("\n"):
-        # IP addresses (IPv4) and domain names have different regular expression
+        # IP addresses (IPv4), domain names, ASNs, email addresses, and JARM hashes
         ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
         domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+        asn_match = re.findall(r"(?:AS)\d+", line)
+        asn_json_match = re.findall(r"'asn':\s'\d{3,6}'", line)
+        email_match = re.findall(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", line)
+        jarm_match = re.findall(r"\b[a-fA-F\d]{62}\b", line)
 
-        if ip_match or domain_match:
-            # use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
-            for match in ip_match + domain_match:
+        if ip_match or domain_match or asn_match or email_match or jarm_match or asn_json_match:
+            # Use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
+            for match in ip_match + domain_match + asn_match + email_match + jarm_match:
                 dsp_result.insert(tk.INSERT, '\t')
                 dsp_result.insert(tk.INSERT, match, ('highlight', match))
-                dsp_result.insert(tk.INSERT, '\n') # new line
+                dsp_result.insert(tk.INSERT, '\n')  # new line
         else:
             dsp_result.insert(tk.END, line + '\n')
 
@@ -84,14 +90,18 @@ def add_clickable_results(results, dsp_result):
     dsp_result.configure(state="normal")
     dsp_result.delete("1.0", tk.END)
     for line in results.split("\n"):
-        # Regular expressions for IP addresses (IPv4), domain names and SHA256 hashes
+        # IP addresses (IPv4), domain names, ASNs, email addresses, JARM hashes and SHA256 hashes
         ip_match = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", line)
         domain_match = re.findall(r"\b(?:[a-z]+\.)+[a-z]+\b", line)
+        asn_match = re.findall(r"(?:AS)\d+", line)
+        asn_json_match = re.findall(r"'asn':\s'\d{3,6}'", line)
+        email_match = re.findall(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", line)
+        jarm_match = re.findall(r"\b[a-fA-F\d]{62}\b", line)
         sha256_match = re.findall(r"\b[a-fA-F\d]{64}\b", line)
 
-        if ip_match or domain_match or sha256_match:
+        if ip_match or domain_match or asn_match or email_match or jarm_match or sha256_match or asn_json_match:
             # Use insert method with INSERT constant and "tag_name" to place the text in the Text widget with the tag
-            for match in ip_match + domain_match + sha256_match:
+            for match in ip_match + domain_match + asn_match + email_match + jarm_match + sha256_match:
                 dsp_result.insert(tk.INSERT, '\t')
                 dsp_result.insert(tk.INSERT, match, ('highlight', match))
                 dsp_result.insert(tk.INSERT, '\n')  # new line
@@ -99,6 +109,7 @@ def add_clickable_results(results, dsp_result):
             dsp_result.insert(tk.END, line + '\n')  # if no match just insert the line
 
     dsp_result.configure(state="disabled")
+
 
 def scan_whois():
     try:
@@ -166,41 +177,47 @@ def shodan_search():
 
 
 def censys_cert_lookup():
-    apiid = str(ent_censysAPIID.get())
-    apis = str(ent_censysAPIS.get())
-    cert = str(ent_domainInput.get())
+    try:
+        apiid = str(ent_censysAPIID.get())
+        apis = str(ent_censysAPIS.get())
+        cert = str(ent_domainInput.get())
 
-    os.environ["CENSYS_API_ID"] = apiid
-    os.environ["CENSYS_API_SECRET"] = apis
-    cen = CensysCerts()
+        os.environ["CENSYS_API_ID"] = apiid
+        os.environ["CENSYS_API_SECRET"] = apis
+        cen = CensysCerts()
     
-    censys_results = cen.view(cert)
-    results_p = json.dumps(censys_results, indent=2)
+        censys_results = cen.view(cert)
+        results_p = json.dumps(censys_results, indent=2)
 
-    add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
-    update_records(ent_domainInput.get())
+        add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
+        update_records(ent_domainInput.get())
+    except Exception as e:
+        add_clickable_results(str(e), dsp_result1 if switch.get() else dsp_result2)
     
 
 def censys_cert_search():
-    apiid = str(ent_censysAPIID.get())
-    apis = str(ent_censysAPIS.get())
-    cert = str(ent_domainInput.get())
+    try:
+        apiid = str(ent_censysAPIID.get())
+        apis = str(ent_censysAPIS.get())
+        cert = str(ent_domainInput.get())
 
-    os.environ["CENSYS_API_ID"] = apiid
-    os.environ["CENSYS_API_SECRET"] = apis
-    cen = CensysCerts()
+        os.environ["CENSYS_API_ID"] = apiid
+        os.environ["CENSYS_API_SECRET"] = apis
+        cen = CensysCerts()
     
-    query = cen.search(
-    cert,
-    sort=["parsed.issuer.organization", "parsed.subject.postal_code"],
-    pages=2
-    )
+        query = cen.search(
+        cert,
+        sort=["parsed.issuer.organization", "parsed.subject.postal_code"],
+        pages=2
+        )
 
-    cen_hits = query()
-    results_p = json.dumps(cen_hits, indent=2)
+        cen_hits = query()
+        results_p = json.dumps(cen_hits, indent=2)
 
-    add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
-    update_records(ent_domainInput.get())
+        add_clickable_results(results_p, dsp_result1 if switch.get() else dsp_result2)
+        update_records(ent_domainInput.get())
+    except Exception as e:
+        add_clickable_results(str(e), dsp_result1 if switch.get() else dsp_result2)
 
 def on_click(event):
     # get the tag of clicked word
@@ -296,10 +313,10 @@ textContainer1.grid(row=3, column=0, padx=5)
 textContainer2.grid(row=3, column=1, padx=5)
 recordContainer.grid(row=0, column=2, rowspan=6, sticky='e')  
 
-dsp_result1.tag_configure('highlight', foreground='blue', underline=1)
+dsp_result1.tag_configure('highlight', foreground='green', underline=1)
 dsp_result1.tag_bind('highlight', '<Button-1>', on_click)
 
-dsp_result2.tag_configure('highlight', foreground='blue', underline=1)
+dsp_result2.tag_configure('highlight', foreground='green', underline=1)
 dsp_result2.tag_bind('highlight', '<Button-1>', on_click)
 
 mainWindow.mainloop()

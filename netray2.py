@@ -1,5 +1,6 @@
 import tkinter as tk
 from ipwhois import IPWhois
+import whois
 import re
 import pprint as pp
 import socket
@@ -117,9 +118,7 @@ def scan_whois():
             target = IPWhois(target_domain)
             whoisResults = target.lookup_whois()
         elif re.search(r"(?!-)[a-z0-9-]{1,63}(?<!-)$", target_domain) is not None:
-            target = socket.gethostbyname(target_domain)
-            target = IPWhois(target)
-            whoisResults = target.lookup_whois()
+            whoisResults = whois.whois(target_domain)
         else:
             whoisResults = str("Not IP or Domain")
         presults = pp.pformat(whoisResults, indent=2)

@@ -1,4 +1,5 @@
 shodan
 ipwhois
+python-whois
 censys
-tk
+python-tk

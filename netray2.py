@@ -278,14 +278,14 @@ def btn_censys_host_view_click():
 
 
 # Buttons
-btn_whois = tk.Button(master=frm_buttons, text="WHOIS Lookup", command=btn_whois_click)
-btn_pdns = tk.Button(master=frm_buttons, text="Passive Total PDNS", command=btn_pdns_click)
-btn_shodan = tk.Button(master=frm_buttons, text="Shodan Host Lookup", command=btn_shodan_click)
-btn_shodan_search = tk.Button(master=frm_buttons, text="Shodan Search", command=btn_shodan_search_click)
-btn_censys_cert_lookup = tk.Button(master=frm_buttons, text="Censys Cert Lookup", command=btn_censys_cert_lookup_click)
-btn_censys_cert_search = tk.Button(master=frm_buttons, text="Censys Cert Search", command=btn_censys_cert_search_click)
-btn_censys_host_view = tk.Button(master=frm_buttons, text="Censys Host View", command=btn_censys_host_view_click)
-btn_clear = tk.Button(master=frm_buttons, text='Clear Records', command=clear_click)
+btn_whois = tk.Button(master=frm_buttons, text="WHOIS Lookup", command=btn_whois_click, sticky="w")
+btn_pdns = tk.Button(master=frm_buttons, text="Passive Total PDNS", command=btn_pdns_click, sticky="w")
+btn_shodan = tk.Button(master=frm_buttons, text="Shodan Host Lookup", command=btn_shodan_click, sticky="w")
+btn_shodan_search = tk.Button(master=frm_buttons, text="Shodan Search", command=btn_shodan_search_click, sticky="w")
+btn_censys_cert_lookup = tk.Button(master=frm_buttons, text="Censys Cert Lookup", command=btn_censys_cert_lookup_click, sticky="w")
+btn_censys_cert_search = tk.Button(master=frm_buttons, text="Censys Cert Search", command=btn_censys_cert_search_click, sticky="w")
+btn_censys_host_view = tk.Button(master=frm_buttons, text="Censys Host View", command=btn_censys_host_view_click, sticky="w")
+btn_clear = tk.Button(master=frm_buttons, text='Clear Records', command=clear_click, sticky="w")
 
 # Layout
 lbl_domainInput.grid(row=0, column=0)

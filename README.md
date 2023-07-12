@@ -32,3 +32,8 @@ NetRay allows you to gather in one place data from the infrastructure analysis s
 * Display Switcher. Since depending on how we work we may want to have some results available all the time I have not introduced any automation in terms of data display switching - if the switch is active the data will be displayed on the left, if not then on the right.
 
 4. Below you will find two windows in which search results will be displayed. To make things easier, the application detects IP addresses, domains, SHA256 hashes, JARM hashes, email addresses, and AS numbers in the results. These elements are highlighted, and clicking on them places them in the search entry box.
+
+
+# Demo
+
+![NetRay demo](https://github.com/lawsecnet/NetRay/blob/main/readme_files/nrdemo.gif)

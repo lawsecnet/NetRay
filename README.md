@@ -1,5 +1,7 @@
 # NetRay
 
+![NetRay demo](https://github.com/lawsecnet/NetRay/blob/main/readme_files/nrdemo.gif)
+
 Lightweight swiss army knife type utility to perform various quick checks on domains and IP addresses.
 Aim of the project is to combine common information gathering tools such as WHOIS with integration with various data providers through API, and enable analyst to avoid having to access multiple web based interfaces.
 
@@ -34,6 +36,3 @@ NetRay allows you to gather in one place data from the infrastructure analysis s
 4. Below you will find two windows in which search results will be displayed. To make things easier, the application detects IP addresses, domains, SHA256 hashes, JARM hashes, email addresses, and AS numbers in the results. These elements are highlighted, and clicking on them places them in the search entry box.
 
 
-# Demo
-
-![NetRay demo](https://github.com/lawsecnet/NetRay/blob/main/readme_files/nrdemo.gif)
